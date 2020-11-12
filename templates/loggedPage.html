@@ -1,0 +1,56 @@
+{% extends "layout.html" %} {% block head %}
+
+<title>Stock price predictor</title>
+
+{% endblock %} {% block body %}
+
+<div class="container" style="text-align: center">
+    <div id="form-input">
+        Stock symbol: <input type="text" id="ticker" />
+        <button class="btn btn-secondary btn-lg" id="predict-btn">
+            Predict
+        </button>
+        <br />
+        <br />
+        <br />
+    </div>
+
+    <div id="prediction-output"></div>
+</div>
+
+<script>
+    function addDays(theDate, days) {
+        return new Date(theDate.getTime() + days * 24 * 60 * 60 * 1000);
+    }
+
+    $("#predict-btn").click(() => {
+        let ticker = $("#ticker").val();
+
+        $("#prediction-output").html("Loading...");
+
+        $.ajax({
+            url: "/predict/",
+            type: "POST",
+            data: "Ticker=" + ticker,
+        })
+            .done((data) => {
+                $("#prediction-output").html("");
+                for (let i = 1; i <= 7; i++) {
+                    var newDate = addDays(new Date(), i);
+                    let date = newDate.getDate();
+                    let month = newDate.getMonth();
+                    let year = newDate.getFullYear();
+                    let formattedDate = date + "/" + month + "/" + year;
+                    $("#prediction-output").append(
+                        formattedDate + " - " + data[i - 1] + "<br/><br/>"
+                    );
+                }
+            })
+            .fail((data) => {
+                console.log("error");
+                console.log(data);
+            });
+    });
+</script>
+
+{% endblock %}

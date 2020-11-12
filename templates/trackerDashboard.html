@@ -1,0 +1,221 @@
+{% extends "layout.html" %} {% block head %}
+
+<style>
+    .nav-link {
+        color: red;
+    }
+
+    #slack-modal-content {
+        display: none;
+    }
+
+    #slack-content {
+        text-align: center;
+    }
+
+    #slackURI {
+        width: 50%;
+    }
+
+    #error-msg {
+        color: red;
+    }
+</style>
+
+<title>Dashboard</title>
+
+{% endblock %} {% block body %}
+
+<div class="container" style="text-align: center; margin-top: 2%">
+    <div id="input-area">
+        <div id="tracker-input">
+            <input type="text" id="company-1" />
+            <br />
+            <br />
+        </div>
+
+        <div id="error-message" style="color: red"></div>
+
+        <button class="btn btn-success btn-lg tracker-add">+</button>
+        <button class="btn btn-primary btn-lg" id="submit">SUBMIT</button>
+
+        <br />
+        <br />
+    </div>
+
+    <div id="tracked-companies">
+        <button class="btn btn-warning btn-lg" id="tracked-button">
+            Show me the companies which are being tracked!
+        </button>
+        <br />
+        <br />
+    </div>
+
+    <div id="slack-config">
+        <button class="btn btn-primary btn-lg" id="slack-button">
+            Slack configuration
+        </button>
+    </div>
+
+    <div id="slack-modal-content">
+        Slack webhook URI:
+        <input type="text" name="webhook" id="webhook" value="" />
+    </div>
+</div>
+
+<script>
+    let initial = 1;
+
+    var myModal = new jBox("Modal", {
+        content: "Modified the tracking list!",
+        animation: "tada",
+    });
+
+    $(".tracker-add").click(() => {
+        if (initial++ < 3) {
+            let newText =
+                '<input type="text" id="company-' +
+                initial +
+                '">\
+                <br>\
+                <br>\
+            ';
+
+            $("#tracker-input").append(newText);
+        } else
+            $("#error-message").html(
+                "Currently we support only 3 companies to be tracked!<br><br>"
+            );
+    });
+
+    $("#submit").click(() => {
+        let arr_company = [
+            $("#company-1").val(),
+            $("#company-2").val(),
+            $("#company-3").val(),
+        ];
+
+        for (let i = 0; i < 3; i++) {
+            if (arr_company[i] == undefined || arr_company[i] == "") {
+                arr_company[i] = null;
+            }
+        }
+
+        let jsonData = {
+            companies: arr_company,
+        };
+
+        $.ajax({
+            url: "/addCompany/",
+            type: "POST",
+            data: JSON.stringify(jsonData),
+
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+        });
+
+        myModal.open();
+    });
+
+    $("#tracked-button").click(() => {
+        var companies;
+        $.ajax({
+            url: "/getCompanies/",
+            type: "GET",
+        })
+            .done((data) => {
+                companies = data.split(" ");
+                console.log(companies);
+
+                var html = "<ul>";
+
+                for (var i = 0; i < companies.length; i++) {
+                    if (companies[i] == "") continue;
+                    html += "<li>";
+                    html += companies[i];
+                    html += "</li>";
+                }
+
+                html += "</ul>";
+
+                var trackingModal = new jBox("Modal", {
+                    content: html,
+                    animation: "tada",
+                });
+
+                trackingModal.open();
+            })
+            .fail((data) => {
+                console.log(data);
+            });
+    });
+
+    $("#slack-button").click(() => {
+        $.ajax({
+            url: "/slackConfig/",
+            type: "GET",
+        }).done((data) => {
+            console.log(data);
+
+            let uri = document.getElementById("webhook");
+
+            uri.value = data;
+
+            var slackModal = new jBox("Modal", {
+                content:
+                    '<div id="slack-content">Slack webhook URI: <br /> <br /> <input type="text" id="slackURI" value=' +
+                    data +
+                    '><br /> <br /><button class="btn btn-primary" onClick="webhookSubmit()">SUBMIT</button> &nbsp;' +
+                    '<button class="btn btn-success" id="webhook-test" onClick="webhookTest()">TEST WEBHOOK</button>' +
+                    "</div>",
+
+                width: "70%",
+            });
+
+            slackModal.open();
+        });
+    });
+
+    function webhookTest() {
+        let data = {
+            message:
+                "This is a test message from the stock price predictor web application!",
+        };
+
+        $.ajax({
+            url: "/slackMessage/",
+            type: "POST",
+            data: JSON.stringify(data),
+            contentType: "application/json; charset=utf-8",
+        })
+            .done((data) => {
+                alert("Sent slack message!");
+            })
+            .fail((data) => {
+                alert(
+                    "Failed to send slack message! Please check the slack webhook URI"
+                );
+            });
+    }
+
+    function webhookSubmit() {
+        let data = {
+            webhook: $("#slackURI").val(),
+        };
+
+        $.ajax({
+            url: "/slackConfig/",
+            type: "POST",
+            data: JSON.stringify(data),
+            contentType: "application/json; charset=utf-8",
+        })
+            .done((data) => {
+                alert("Slack configured successfully!");
+            })
+            .fail((data) => {
+                alert("An error occured!");
+            });
+    }
+</script>
+
+{% endblock %}
